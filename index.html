@@ -30,11 +30,15 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#05060B;overflow:
 // GitHub Pages cannot send a compression header, so the files are stored gzipped and unpacked with the browser's own fast native decompressor.
 var canvas=document.getElementById("unity-canvas"),$=function(i){return document.getElementById(i)};
 var parts={data:["Build/WebGL.data","application/octet-stream"],code:["Build/WebGL.wasm","application/wasm"],fw:["Build/WebGL.framework.js","text/javascript"]};
-var got={},total=18497253;
+var got={},total=18497233;
 function show(){var s=0;for(var k in got)s+=got[k];var q=Math.min(1,s/total);$("fill").style.width=(q*80)+"%";$("msg").textContent=q<1?"Loading the dungeon… "+Math.round(q*100)+"%":"Lighting the torches…"}
-function load(k){return fetch(parts[k][0]+".gz").then(function(r){if(!r.ok)throw new Error("Could not load "+parts[k][0]);got[k]=0;var rd=r.body.getReader();
-  var counted=new ReadableStream({pull:function(c){return rd.read().then(function(x){if(x.done){c.close();return}got[k]+=x.value.length;show();c.enqueue(x.value)})}});
-  return new Response(counted.pipeThrough(new DecompressionStream("gzip"))).blob()}).then(function(b){return URL.createObjectURL(new Blob([b],{type:parts[k][1]}))})}
+// Files stay in the browser's cache storage per build, so only the first visit downloads anything.
+var store=window.caches?caches.keys().then(function(ks){ks.forEach(function(n){if(n.indexOf("amaze-")==0&&n!="amaze-"+total)caches.delete(n)});return caches.open("amaze-"+total)}).catch(function(){return null}):Promise.resolve(null);
+function unpack(body,type){return new Response(body.pipeThrough(new DecompressionStream("gzip"))).blob().then(function(b){return URL.createObjectURL(new Blob([b],{type:type}))})}
+function load(k){var url=parts[k][0]+".gz",type=parts[k][1];return store.then(function(c){return (c?c.match(url):Promise.resolve(null)).then(function(hit){
+  if(hit){got[k]=+hit.headers.get("x-size")||0;return hit.blob().then(function(b){got[k]=b.size;show();return unpack(b.stream(),type)})}
+  return fetch(url).then(function(r){if(!r.ok)throw new Error("Could not load "+url);got[k]=0;var rd=r.body.getReader(),chunks=[];
+    return (function pump(){return rd.read().then(function(x){if(x.done)return;got[k]+=x.value.length;chunks.push(x.value);show();return pump()})})().then(function(){var b=new Blob(chunks);if(c)c.put(url,new Response(b)).catch(function(){});return unpack(b.stream(),type)})})})})}
 function fail(m){var e=$("err");e.style.display="block";e.textContent=String(m)}
 if(!window.DecompressionStream)fail("Please update your browser to play A MAZE.");
 else Promise.all([load("data"),load("code"),load("fw")]).then(function(u){return createUnityInstance(canvas,{arguments:[],dataUrl:u[0],codeUrl:u[1],frameworkUrl:u[2],streamingAssetsUrl:"StreamingAssets",companyName:"SoSunStudios",productName:"A MAZE",productVersion:"1.0"},function(p){$("fill").style.width=(80+20*p)+"%"})})
