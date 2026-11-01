@@ -39,9 +39,11 @@ function load(k){var url=parts[k][0]+".gz",type=parts[k][1];return store.then(fu
   if(hit){got[k]=+hit.headers.get("x-size")||0;return hit.blob().then(function(b){got[k]=b.size;show();return unpack(b.stream(),type)})}
   return fetch(url).then(function(r){if(!r.ok)throw new Error("Could not load "+url);got[k]=0;var rd=r.body.getReader(),chunks=[];
     return (function pump(){return rd.read().then(function(x){if(x.done)return;got[k]+=x.value.length;chunks.push(x.value);show();return pump()})})().then(function(){var b=new Blob(chunks);if(c)c.put(url,new Response(b)).catch(function(){});return unpack(b.stream(),type)})})})})}
+// A dropped connection retries by itself instead of showing an error.
+function attempt(k,n){return load(k).catch(function(e){if(n<=0)throw e;got[k]=0;$("msg").textContent="Weak connection, retrying…";return new Promise(function(r){setTimeout(r,1500)}).then(function(){return attempt(k,n-1)})})}
 function fail(m){var e=$("err");e.style.display="block";e.textContent=String(m)}
 if(!window.DecompressionStream)fail("Please update your browser to play A MAZE.");
-else Promise.all([load("data"),load("code"),load("fw")]).then(function(u){return createUnityInstance(canvas,{arguments:[],dataUrl:u[0],codeUrl:u[1],frameworkUrl:u[2],streamingAssetsUrl:"StreamingAssets",companyName:"SoSunStudios",productName:"A MAZE",productVersion:"1.0"},function(p){$("fill").style.width=(80+20*p)+"%"})})
+else Promise.all([attempt("data",4),attempt("code",4),attempt("fw",4)]).then(function(u){return createUnityInstance(canvas,{arguments:[],dataUrl:u[0],codeUrl:u[1],frameworkUrl:u[2],streamingAssetsUrl:"StreamingAssets",companyName:"SoSunStudios",productName:"A MAZE",productVersion:"1.0"},function(p){$("fill").style.width=(80+20*p)+"%"})})
 .then(function(){canvas.focus();$("bar").style.display="none";var l=$("load");l.style.opacity=0;setTimeout(function(){l.style.display="none"},260)}).catch(fail);
 </script>
 </body>
