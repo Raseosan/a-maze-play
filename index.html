@@ -30,7 +30,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#05060B;overflow:
 // GitHub Pages cannot send a compression header, so the files are stored gzipped and unpacked with the browser's own fast native decompressor.
 var canvas=document.getElementById("unity-canvas"),$=function(i){return document.getElementById(i)};
 var parts={data:["Build/WebGL.data","application/octet-stream"],code:["Build/WebGL.wasm","application/wasm"],fw:["Build/WebGL.framework.js","text/javascript"]};
-var got={},total=18497233;
+var got={},total=17822318;
 function show(){var s=0;for(var k in got)s+=got[k];var q=Math.min(1,s/total);$("fill").style.width=(q*80)+"%";$("msg").textContent=q<1?"Loading the dungeon… "+Math.round(q*100)+"%":"Lighting the torches…"}
 // Files stay in the browser's cache storage per build, so only the first visit downloads anything.
 var store=window.caches?caches.keys().then(function(ks){ks.forEach(function(n){if(n.indexOf("amaze-")==0&&n!="amaze-"+total)caches.delete(n)});return caches.open("amaze-"+total)}).catch(function(){return null}):Promise.resolve(null);
