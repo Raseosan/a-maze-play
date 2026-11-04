@@ -22,7 +22,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#05060B;overflow:
 <body>
 <div id="wrap">
 <canvas id="unity-canvas" tabindex="1"></canvas>
-<div id="load"><div id="a">A</div><div id="m">MAZE</div><div id="bar"><div id="fill"></div></div><div id="msg">Loading the dungeon…</div></div>
+<div id="load"><div id="a">A</div><div id="m">MAZE</div><div id="bar"><div id="fill"></div></div><div id="msg">Loading the maze…</div></div>
 <div id="err"></div>
 </div>
 <script src="Build/WebGL.loader.js"></script>
@@ -30,20 +30,22 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#05060B;overflow:
 // GitHub Pages cannot send a compression header, so the files are stored gzipped and unpacked with the browser's own fast native decompressor.
 var canvas=document.getElementById("unity-canvas"),$=function(i){return document.getElementById(i)};
 var parts={data:["Build/WebGL.data","application/octet-stream"],code:["Build/WebGL.wasm","application/wasm"],fw:["Build/WebGL.framework.js","text/javascript"]};
-var got={},total=17852704;
-function show(){var s=0;for(var k in got)s+=got[k];var q=Math.min(1,s/total);$("fill").style.width=(q*80)+"%";$("msg").textContent=q<1?"Loading the dungeon… "+Math.round(q*100)+"%":"Lighting the torches…"}
+var got={},total=13940456;
+// The big files come from a CDN copy of this repo (pinned to a commit, so it never serves a stale build); the page's own host is the fallback.
+var cdn="https://cdn.jsdelivr.net/gh/Raseosan/a-maze-play@fbfb3d35185faf805f8d56e96fe0d2c3ebf82108/".indexOf("__")==0?"":"https://cdn.jsdelivr.net/gh/Raseosan/a-maze-play@fbfb3d35185faf805f8d56e96fe0d2c3ebf82108/";
+function show(){var s=0;for(var k in got)s+=got[k];var q=Math.min(1,s/total);$("fill").style.width=(q*80)+"%";$("msg").textContent=q<1?"Loading the maze… "+Math.round(q*100)+"%":"Lighting the torches…"}
 // Files stay in the browser's cache storage per build, so only the first visit downloads anything.
 var store=window.caches?caches.keys().then(function(ks){ks.forEach(function(n){if(n.indexOf("amaze-")==0&&n!="amaze-"+total)caches.delete(n)});return caches.open("amaze-"+total)}).catch(function(){return null}):Promise.resolve(null);
 function unpack(body,type){return new Response(body.pipeThrough(new DecompressionStream("gzip"))).blob().then(function(b){return URL.createObjectURL(new Blob([b],{type:type}))})}
-function load(k){var url=parts[k][0]+".gz",type=parts[k][1];return store.then(function(c){return (c?c.match(url):Promise.resolve(null)).then(function(hit){
+function load(k,useCdn){var url=parts[k][0]+".gz",type=parts[k][1],src=(useCdn&&cdn?cdn:"")+url;return store.then(function(c){return (c?c.match(url):Promise.resolve(null)).then(function(hit){
   if(hit){got[k]=+hit.headers.get("x-size")||0;return hit.blob().then(function(b){got[k]=b.size;show();return unpack(b.stream(),type)})}
-  return fetch(url).then(function(r){if(!r.ok)throw new Error("Could not load "+url);got[k]=0;var rd=r.body.getReader(),chunks=[];
+  return fetch(src).then(function(r){if(!r.ok)throw new Error("Could not load "+url);got[k]=0;var rd=r.body.getReader(),chunks=[];
     return (function pump(){return rd.read().then(function(x){if(x.done)return;got[k]+=x.value.length;chunks.push(x.value);show();return pump()})})().then(function(){var b=new Blob(chunks);if(c)c.put(url,new Response(b)).catch(function(){});return unpack(b.stream(),type)})})})})}
 // A dropped connection retries by itself instead of showing an error.
-function attempt(k,n){return load(k).catch(function(e){if(n<=0)throw e;got[k]=0;$("msg").textContent="Weak connection, retrying…";return new Promise(function(r){setTimeout(r,1500)}).then(function(){return attempt(k,n-1)})})}
+function attempt(k,n){return load(k,n>=3).catch(function(e){if(n<=0)throw e;got[k]=0;$("msg").textContent="Weak connection, retrying…";return new Promise(function(r){setTimeout(r,1500)}).then(function(){return attempt(k,n-1)})})}
 function fail(m){var e=$("err");e.style.display="block";e.textContent=String(m)}
 if(!window.DecompressionStream)fail("Please update your browser to play A MAZE.");
-else Promise.all([attempt("data",4),attempt("code",4),attempt("fw",4)]).then(function(u){return createUnityInstance(canvas,{arguments:[],dataUrl:u[0],codeUrl:u[1],frameworkUrl:u[2],streamingAssetsUrl:"StreamingAssets",companyName:"SoSunStudios",productName:"A MAZE",productVersion:"1.0"},function(p){$("fill").style.width=(80+20*p)+"%"})})
+else Promise.all([attempt("data",4),attempt("code",4),attempt("fw",4)]).then(function(u){return createUnityInstance(canvas,{arguments:[],dataUrl:u[0],codeUrl:u[1],frameworkUrl:u[2],streamingAssetsUrl:"StreamingAssets",companyName:"SoSunStudios",productName:"A MAZE",productVersion:"1.0.0"},function(p){$("fill").style.width=(80+20*p)+"%"})})
 .then(function(){canvas.focus();$("bar").style.display="none";var l=$("load");l.style.opacity=0;setTimeout(function(){l.style.display="none"},260)}).catch(fail);
 </script>
 </body>
